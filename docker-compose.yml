@@ -10,32 +10,25 @@ services:
       - BETTER_AUTH_SECRET=${AUTH_SECRET}
       - BETTER_AUTH_URL=${BASE_URL}
       - DOCKEBASE_INSTANCE_URL=${BASE_URL}
+      # Proxy initialization (read at startup)
+      - DOCKEBASE_INIT_DOMAIN=${DOMAIN}
+      - DOCKEBASE_INIT_EMAIL=${ACME_EMAIL}
+      - DOCKEBASE_INIT_PROVIDER=${PROXY_PROVIDER}
     restart: unless-stopped
     networks:
       - dockebase-internal
 
-  dockebase-web:
-    image: ghcr.io/dockebase/dockebase-alpha-images/web:latest
-    container_name: dockebase-web
+  dockebase-ui:
+    image: ghcr.io/dockebase/dockebase-alpha-images/ui:latest
+    container_name: dockebase-ui
     ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - DOCKEBASE_DOMAIN=${DOMAIN}
-      - ACME_EMAIL=${ACME_EMAIL}
-    volumes:
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      - dockebase-api
+      - "9000:80"  # Fallback HTTP access when proxy is disabled
     restart: unless-stopped
     networks:
       - dockebase-internal
 
 volumes:
   dockebase-data:
-  caddy-data:
-  caddy-config:
 
 networks:
   dockebase-internal:

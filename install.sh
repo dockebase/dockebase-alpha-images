@@ -6,6 +6,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}"
@@ -73,13 +74,14 @@ echo -e "${YELLOW}════════════════════�
 echo ""
 
 # Domain
-echo -e "${BLUE}Enter your domain (e.g., panel.example.com)${NC}"
-echo -e "Leave empty for localhost (no SSL):"
+echo -e "${BLUE}Enter your domain for Dockebase panel (e.g., panel.example.com)${NC}"
+echo -e "Leave empty for localhost (HTTP only, no SSL):"
 read -r DOMAIN < /dev/tty
 DOMAIN=${DOMAIN:-localhost}
 
-# ACME Email (only if domain is not localhost)
+# ACME Email and Proxy provider (only if domain is not localhost)
 ACME_EMAIL=""
+PROXY_PROVIDER=""
 if [ "$DOMAIN" != "localhost" ]; then
     echo ""
     echo -e "${BLUE}Enter your email for Let's Encrypt SSL certificates:${NC}"
@@ -89,6 +91,37 @@ if [ "$DOMAIN" != "localhost" ]; then
         echo -e "${RED}Error: Email is required for SSL certificates${NC}"
         exit 1
     fi
+
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}                  Reverse Proxy Selection                  ${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${CYAN}Choose your reverse proxy:${NC}"
+    echo ""
+    echo -e "  ${GREEN}1) Caddy${NC} (Recommended)"
+    echo -e "     • Lightweight (~20MB RAM)"
+    echo -e "     • Simple configuration"
+    echo -e "     • Best for standard workloads"
+    echo ""
+    echo -e "  ${BLUE}2) Traefik${NC}"
+    echo -e "     • More features (~40MB RAM)"
+    echo -e "     • Better for high-load scenarios"
+    echo -e "     • Native Docker integration"
+    echo ""
+    echo -e "Enter choice [1/2] (default: 1):"
+    read -r PROXY_CHOICE < /dev/tty
+
+    case "$PROXY_CHOICE" in
+        2)
+            PROXY_PROVIDER="traefik"
+            echo -e "${GREEN}✓ Selected: Traefik${NC}"
+            ;;
+        *)
+            PROXY_PROVIDER="caddy"
+            echo -e "${GREEN}✓ Selected: Caddy${NC}"
+            ;;
+    esac
 fi
 
 # Generate auth secret
@@ -96,12 +129,13 @@ AUTH_SECRET=$(openssl rand -hex 32)
 
 # Determine base URL
 if [ "$DOMAIN" = "localhost" ]; then
-    BASE_URL="http://localhost"
+    BASE_URL="http://localhost:9000"
 else
     BASE_URL="https://$DOMAIN"
 fi
 
 # Create .env file
+echo ""
 echo -e "${BLUE}Creating configuration...${NC}"
 cat > .env << EOF
 # Dockebase Configuration
@@ -111,9 +145,16 @@ DOMAIN=$DOMAIN
 ACME_EMAIL=$ACME_EMAIL
 BASE_URL=$BASE_URL
 AUTH_SECRET=$AUTH_SECRET
+PROXY_PROVIDER=$PROXY_PROVIDER
 EOF
 
 echo -e "${GREEN}✓ Configuration created${NC}"
+
+# Create Docker networks
+echo -e "${BLUE}Creating Docker networks...${NC}"
+docker network create dockebase-internal 2>/dev/null || true
+docker network create dockebase-proxy 2>/dev/null || true
+echo -e "${GREEN}✓ Docker networks created${NC}"
 
 # Pull images
 echo ""
@@ -131,8 +172,9 @@ echo -e "${GREEN}✓ Dockebase started${NC}"
 
 # Wait for services to be ready
 echo ""
-echo -e "${BLUE}Waiting for services to be ready...${NC}"
-sleep 5
+echo -e "${BLUE}Waiting for services to initialize...${NC}"
+echo -e "${YELLOW}(Proxy will be configured automatically)${NC}"
+sleep 10
 
 # Check if services are running
 if docker compose ps | grep -q "running"; then
@@ -140,6 +182,15 @@ if docker compose ps | grep -q "running"; then
 else
     echo -e "${RED}Warning: Some services may not be running properly${NC}"
     echo "Check status with: cd $INSTALL_DIR && docker compose ps"
+fi
+
+# Check if proxy was started (if domain is set)
+if [ "$DOMAIN" != "localhost" ]; then
+    if docker ps | grep -q "dockebase-$PROXY_PROVIDER"; then
+        echo -e "${GREEN}✓ Proxy ($PROXY_PROVIDER) is running${NC}"
+    else
+        echo -e "${YELLOW}Note: Proxy container will start after first API request${NC}"
+    fi
 fi
 
 # Print success message
@@ -150,10 +201,14 @@ echo -e "${GREEN}═════════════════════
 echo ""
 
 if [ "$DOMAIN" = "localhost" ]; then
-    echo -e "Access Dockebase at: ${BLUE}http://localhost${NC}"
+    echo -e "Access Dockebase at: ${BLUE}http://localhost:9000${NC}"
+    echo ""
+    echo -e "${YELLOW}Note: Running without proxy (HTTP only).${NC}"
+    echo -e "${YELLOW}You can enable HTTPS later in Settings > Web Server.${NC}"
 else
     echo -e "Access Dockebase at: ${BLUE}https://$DOMAIN${NC}"
     echo ""
+    echo -e "Proxy: ${CYAN}$PROXY_PROVIDER${NC}"
     echo -e "${YELLOW}Note: SSL certificate will be automatically provisioned.${NC}"
     echo -e "${YELLOW}This may take a few minutes on first access.${NC}"
 fi
@@ -163,8 +218,8 @@ echo -e "Installation directory: ${BLUE}$INSTALL_DIR${NC}"
 echo ""
 echo "Useful commands:"
 echo -e "  ${BLUE}cd $INSTALL_DIR${NC}"
-echo -e "  ${BLUE}docker compose ps${NC}      - Check status"
-echo -e "  ${BLUE}docker compose logs -f${NC} - View logs"
-echo -e "  ${BLUE}docker compose down${NC}    - Stop services"
-echo -e "  ${BLUE}docker compose up -d${NC}   - Start services"
+echo -e "  ${BLUE}docker compose ps${NC}          - Check services status"
+echo -e "  ${BLUE}docker compose logs -f${NC}     - View logs"
+echo -e "  ${BLUE}docker compose down${NC}        - Stop services"
+echo -e "  ${BLUE}docker compose up -d${NC}       - Start services"
 echo ""
