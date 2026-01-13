@@ -75,7 +75,7 @@ echo ""
 # Domain
 echo -e "${BLUE}Enter your domain (e.g., panel.example.com)${NC}"
 echo -e "Leave empty for localhost (no SSL):"
-read -r DOMAIN
+read -r DOMAIN < /dev/tty
 DOMAIN=${DOMAIN:-localhost}
 
 # ACME Email (only if domain is not localhost)
@@ -83,7 +83,7 @@ ACME_EMAIL=""
 if [ "$DOMAIN" != "localhost" ]; then
     echo ""
     echo -e "${BLUE}Enter your email for Let's Encrypt SSL certificates:${NC}"
-    read -r ACME_EMAIL
+    read -r ACME_EMAIL < /dev/tty
 
     if [ -z "$ACME_EMAIL" ]; then
         echo -e "${RED}Error: Email is required for SSL certificates${NC}"
