@@ -1,0 +1,41 @@
+services:
+  dockebase-api:
+    image: ghcr.io/dockebase/dockebase-alpha-images/api:latest
+    container_name: dockebase-api
+    volumes:
+      - dockebase-data:/app/backend/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - NODE_ENV=production
+      - BETTER_AUTH_SECRET=${AUTH_SECRET}
+      - BETTER_AUTH_URL=${BASE_URL}
+    restart: unless-stopped
+    networks:
+      - dockebase-internal
+
+  dockebase-web:
+    image: ghcr.io/dockebase/dockebase-alpha-images/web:latest
+    container_name: dockebase-web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOCKEBASE_DOMAIN=${DOMAIN}
+      - ACME_EMAIL=${ACME_EMAIL}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - dockebase-api
+    restart: unless-stopped
+    networks:
+      - dockebase-internal
+
+volumes:
+  dockebase-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  dockebase-internal:
+    driver: bridge
