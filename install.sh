@@ -9,22 +9,18 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}"
-echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║                                                           ║"
-echo "║     ██████╗  ██████╗  ██████╗██╗  ██╗███████╗             ║"
-echo "║     ██╔══██╗██╔═══██╗██╔════╝██║ ██╔╝██╔════╝             ║"
-echo "║     ██║  ██║██║   ██║██║     █████╔╝ █████╗               ║"
-echo "║     ██║  ██║██║   ██║██║     ██╔═██╗ ██╔══╝               ║"
-echo "║     ██████╔╝╚██████╔╝╚██████╗██║  ██╗███████╗             ║"
-echo "║     ╚═════╝  ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝             ║"
-echo "║                                                           ║"
-echo "║     Docker Control Panel - Alpha                          ║"
-echo "║                                                           ║"
-echo "╚═══════════════════════════════════════════════════════════╝"
+echo "┌─────────────────────────────────────────────────────────────────────────┐"
+echo "│  ___           _        _                                               │"
+echo "│ |   \ ___  ___| |_____ | |__  __ _ ___ ___                              │"
+echo "│ | |) / _ \/ __| / / -_)| '_ \/ _\` (_-</ -_)                             │"
+echo "│ |___/\___/\___|_\_\___||_.__/\__,_/__/\___|                             │"
+echo "│                                                                         │"
+echo "│ Docker Control Panel - Alpha                                            │"
+echo "└─────────────────────────────────────────────────────────────────────────┘"
 echo -e "${NC}"
 
 INSTALL_DIR="/opt/dockebase"
-REPO_URL="https://raw.githubusercontent.com/dockebase/dockebase-alpha-builds/main"
+REPO_URL="https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
