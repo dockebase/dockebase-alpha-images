@@ -34,4 +34,4 @@ volumes:
 
 networks:
   dockebase-internal:
-    driver: bridge
+    external: true
