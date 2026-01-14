@@ -17,6 +17,8 @@ services:
       - DOCKEBASE_INIT_DOMAIN=${DOMAIN}
       - DOCKEBASE_INIT_EMAIL=${ACME_EMAIL}
       - DOCKEBASE_INIT_PROVIDER=${PROXY_PROVIDER}
+      # Disable Docker Compose Bake (buildx) for classic build
+      - COMPOSE_BAKE=0
     restart: unless-stopped
     networks:
       - dockebase-internal
