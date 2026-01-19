@@ -3,7 +3,9 @@ services:
     image: ghcr.io/dockebase/dockebase-alpha-images/api:latest
     container_name: dockebase-api
     volumes:
-      - dockebase-data:/app/backend/data
+      # Host bind mount with SAME PATH inside and outside container
+      # Required for stack bind mounts to work (Docker socket runs on host)
+      - /opt/dockebase/data:/opt/dockebase/data
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=production
@@ -20,6 +22,9 @@ services:
       - DOCKEBASE_INIT_PROVIDER=${PROXY_PROVIDER}
       # Disable Docker Compose Bake (buildx) for classic build
       - COMPOSE_BAKE=0
+      # Override default data paths to match host bind mount
+      - STACKS_PATH=/opt/dockebase/data/stacks
+      - DATABASE_PATH=/opt/dockebase/data/dockebase.db
     restart: unless-stopped
     networks:
       - dockebase-internal
@@ -32,9 +37,6 @@ services:
     restart: unless-stopped
     networks:
       - dockebase-internal
-
-volumes:
-  dockebase-data:
 
 networks:
   dockebase-internal:

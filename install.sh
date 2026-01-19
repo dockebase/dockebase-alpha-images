@@ -152,6 +152,12 @@ EOF
 
 echo -e "${GREEN}✓ Configuration created${NC}"
 
+# Create data directory for bind mount
+# This is required for stack bind mounts to work (Docker socket runs on host)
+echo -e "${BLUE}Creating data directory...${NC}"
+mkdir -p "$INSTALL_DIR/data/stacks"
+echo -e "${GREEN}✓ Data directory created${NC}"
+
 # Create Docker networks
 echo -e "${BLUE}Creating Docker networks...${NC}"
 docker network create dockebase-internal 2>/dev/null || true
