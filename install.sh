@@ -124,8 +124,9 @@ if [ "$DOMAIN" != "localhost" ]; then
     esac
 fi
 
-# Generate auth secret
+# Generate secrets
 AUTH_SECRET=$(openssl rand -hex 32)
+INSTANCE_SECRET=$(openssl rand -hex 32)
 
 # Determine base URL
 if [ "$DOMAIN" = "localhost" ]; then
@@ -145,6 +146,7 @@ DOMAIN=$DOMAIN
 ACME_EMAIL=$ACME_EMAIL
 BASE_URL=$BASE_URL
 AUTH_SECRET=$AUTH_SECRET
+DOCKEBASE_INSTANCE_SECRET=$INSTANCE_SECRET
 PROXY_PROVIDER=$PROXY_PROVIDER
 EOF
 
