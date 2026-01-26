@@ -84,21 +84,24 @@ echo -e "${YELLOW}[6/7] Cleaning Docker build cache...${NC}"
 docker system prune -af --volumes 2>/dev/null || true
 echo -e "${GREEN}✓ Docker cache cleaned${NC}"
 
-# Remove Dockebase data
-echo -e "${YELLOW}[7/7] Removing Dockebase data...${NC}"
-DOCKEBASE_DATA="/opt/dockebase/data"
-if [ -d "$DOCKEBASE_DATA" ]; then
-    rm -rf "$DOCKEBASE_DATA"
-    echo -e "${GREEN}✓ Removed $DOCKEBASE_DATA${NC}"
+# Remove Dockebase installation
+echo -e "${YELLOW}[7/7] Removing Dockebase installation...${NC}"
+DOCKEBASE_DIR="/opt/dockebase"
+if [ -d "$DOCKEBASE_DIR" ]; then
+    rm -rf "$DOCKEBASE_DIR"
+    echo -e "${GREEN}✓ Removed $DOCKEBASE_DIR${NC}"
 else
-    echo -e "${GREEN}✓ No Dockebase data directory found${NC}"
+    echo -e "${GREEN}✓ No Dockebase installation found${NC}"
 fi
 
-# Also check for local development data
-LOCAL_DATA="./data"
-if [ -d "$LOCAL_DATA" ]; then
-    rm -rf "$LOCAL_DATA"
-    echo -e "${GREEN}✓ Removed $LOCAL_DATA${NC}"
+# Remove any downloaded install scripts
+if [ -f "./install.sh" ]; then
+    rm -f "./install.sh"
+    echo -e "${GREEN}✓ Removed ./install.sh${NC}"
+fi
+if [ -f "./delete.sh" ]; then
+    rm -f "./delete.sh"
+    echo -e "${GREEN}✓ Removed ./delete.sh${NC}"
 fi
 
 echo ""
