@@ -34,7 +34,8 @@ echo "║  This is IRREVERSIBLE!                                        ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-read -p "Are you sure you want to continue? Type 'DELETE' to confirm: " confirm
+echo -n "Are you sure you want to continue? Type 'DELETE' to confirm: "
+read confirm < /dev/tty
 
 if [ "$confirm" != "DELETE" ]; then
     echo -e "${YELLOW}Aborted.${NC}"
