@@ -6,6 +6,7 @@ services:
       # Host bind mount with SAME PATH inside and outside container
       # Required for stack bind mounts to work (Docker socket runs on host)
       - /opt/dockebase/data:/opt/dockebase/data
+      - /opt/dockebase/.env:/opt/dockebase/.env
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=production
