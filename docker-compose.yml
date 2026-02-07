@@ -23,6 +23,7 @@ services:
       - DOCKEBASE_INIT_DOMAIN=${DOMAIN}
       - DOCKEBASE_INIT_EMAIL=${ACME_EMAIL}
       - DOCKEBASE_INIT_PROVIDER=${PROXY_PROVIDER}
+      - DOCKEBASE_PROXY_MODE=${PROXY_MODE}
       # Disable Docker Compose Bake (buildx) for classic build
       - COMPOSE_BAKE=0
       # Override default data paths to match host bind mount
@@ -35,8 +36,6 @@ services:
   dockebase-ui:
     image: ghcr.io/dockebase/dockebase-alpha-images/ui:latest
     container_name: dockebase-ui
-    ports:
-      - "9000:80"  # Fallback HTTP access when proxy is disabled
     restart: unless-stopped
     networks:
       - dockebase-internal
