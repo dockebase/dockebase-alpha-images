@@ -7,6 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}"
@@ -82,9 +83,9 @@ detect_environment() {
 
 ask_proxy_provider() {
     echo ""
-    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "${YELLOW}                  Reverse Proxy Selection                  ${NC}"
-    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}                                  Reverse Proxy Selection                                      ${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo -e "${CYAN}Choose your reverse proxy:${NC}"
     echo ""
@@ -190,9 +191,9 @@ show_wizard() {
 # ──────────────────────────────────────────────
 
 echo ""
-echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}                    Configuration                          ${NC}"
-echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}                                       Configuration                                            ${NC}"
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
 # Initialize variables
@@ -376,9 +377,9 @@ fi
 
 # Print success message
 echo ""
-echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}           Dockebase Installation Complete!                ${NC}"
-echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}                              Dockebase Installation Complete!                              ${NC}"
+echo -e "${GREEN}═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
 case "$PROXY_MODE" in
@@ -409,17 +410,17 @@ esac
 echo ""
 echo -e "Installation directory: ${BLUE}$INSTALL_DIR${NC}"
 echo ""
-echo -e "${RED}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${RED}                    IMPORTANT                             ${NC}"
-echo -e "${RED}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${RED}═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
+echo -e "${RED}                                        IMPORTANT                                         ${NC}"
+echo -e "${RED}═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${YELLOW}Backup this encryption key to a secure location:${NC}"
 echo ""
-echo -e "${CYAN}DOCKEBASE_ENCRYPTION_KEY=$ENCRYPTION_KEY${NC}"
+echo -e "${WHITE}DOCKEBASE_ENCRYPTION_KEY=$ENCRYPTION_KEY${NC}"
 echo ""
 echo -e "${YELLOW}This key encrypts your stack environment variables.${NC}"
 echo -e "${YELLOW}If you lose it, encrypted data cannot be recovered.${NC}"
-echo -e "${RED}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${RED}═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo "Useful commands:"
 echo -e "  ${BLUE}cd $INSTALL_DIR${NC}"
