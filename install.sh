@@ -286,7 +286,7 @@ ACME_EMAIL=${ACME_EMAIL:-}
 BASE_URL=$BASE_URL
 AUTH_SECRET=$AUTH_SECRET
 DOCKEBASE_ENCRYPTION_KEY=$ENCRYPTION_KEY
-# DOCKEBASE_INSTANCE_SECRET will be added automatically on first startup
+DOCKEBASE_INSTANCE_SECRET=
 PROXY_PROVIDER=$PROXY_PROVIDER
 PROXY_MODE=$PROXY_MODE
 EOF
@@ -319,25 +319,59 @@ docker compose up -d
 
 echo -e "${GREEN}✓ Dockebase started${NC}"
 
-# Wait for services to be ready
+# Wait for containers to be running
 echo ""
-echo -e "${BLUE}Waiting for services to initialize...${NC}"
-echo -e "${YELLOW}(Proxy will be configured automatically)${NC}"
-sleep 10
+echo -e "${BLUE}Waiting for services to start...${NC}"
+MAX_WAIT=60
+WAITED=0
+SERVICES_OK=false
+while [ $WAITED -lt $MAX_WAIT ]; do
+    API_STATUS=$(docker inspect --format '{{.State.Status}}' dockebase-api 2>/dev/null || echo "missing")
+    UI_STATUS=$(docker inspect --format '{{.State.Status}}' dockebase-ui 2>/dev/null || echo "missing")
 
-# Check if services are running
-if docker compose ps | grep -q "running"; then
-    echo -e "${GREEN}✓ Services are running${NC}"
-else
-    echo -e "${RED}Warning: Some services may not be running properly${NC}"
+    if [ "$API_STATUS" = "running" ] && [ "$UI_STATUS" = "running" ]; then
+        printf "\r\033[K"
+        echo -e "${GREEN}✓ Services are running${NC}"
+        SERVICES_OK=true
+        break
+    fi
+
+    REMAINING=$((MAX_WAIT - WAITED))
+    printf "\r  Waiting for containers... (%ds remaining)" "$REMAINING"
+    sleep 2
+    WAITED=$((WAITED + 2))
+done
+
+if [ "$SERVICES_OK" = false ]; then
+    printf "\r\033[K"
+    echo -e "${RED}Warning: Services did not start within ${MAX_WAIT}s${NC}"
     echo "Check status with: cd $INSTALL_DIR && docker compose ps"
+    echo "Check logs with: cd $INSTALL_DIR && docker compose logs"
 fi
 
-# Check if proxy was started
-if docker ps | grep -q "dockebase-$PROXY_PROVIDER"; then
-    echo -e "${GREEN}✓ Proxy ($PROXY_PROVIDER) is running${NC}"
-else
-    echo -e "${YELLOW}Note: Proxy container will start after first API request${NC}"
+# Wait for proxy to be initialized by the backend
+echo -e "${BLUE}Waiting for proxy to initialize...${NC}"
+MAX_WAIT=45
+WAITED=0
+PROXY_OK=false
+while [ $WAITED -lt $MAX_WAIT ]; do
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "dockebase-$PROXY_PROVIDER"; then
+        printf "\r\033[K"
+        echo -e "${GREEN}✓ Proxy ($PROXY_PROVIDER) is running${NC}"
+        PROXY_OK=true
+        break
+    fi
+
+    REMAINING=$((MAX_WAIT - WAITED))
+    printf "\r  Starting proxy... (%ds remaining)" "$REMAINING"
+    sleep 3
+    WAITED=$((WAITED + 3))
+done
+
+if [ "$PROXY_OK" = false ]; then
+    printf "\r\033[K"
+    echo -e "${YELLOW}Note: Proxy may still be starting. Check logs for details.${NC}"
+    echo "  docker compose logs dockebase-api | grep Proxy"
 fi
 
 # Print success message
