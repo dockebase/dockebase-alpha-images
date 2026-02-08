@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 
 echo -e "${RED}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                    ⚠️  WARNING ⚠️                              ║"
+echo "║                       !!!  WARNING !!!                        ║"
 echo "║                                                               ║"
 echo "║  This will DELETE EVERYTHING:                                 ║"
 echo "║  - All Docker containers (not just Dockebase)                 ║"
