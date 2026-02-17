@@ -1,6 +1,6 @@
 services:
   dockebase-api:
-    image: ghcr.io/dockebase/dockebase-alpha-images/api:latest
+    image: dockebase/api:latest
     container_name: dockebase-api
     volumes:
       # Host bind mount with SAME PATH inside and outside container
@@ -34,7 +34,7 @@ services:
       - dockebase-internal
 
   dockebase-ui:
-    image: ghcr.io/dockebase/dockebase-alpha-images/ui:latest
+    image: dockebase/ui:latest
     container_name: dockebase-ui
     restart: unless-stopped
     networks:
