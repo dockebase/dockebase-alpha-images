@@ -40,6 +40,7 @@ services:
     networks:
       - dockebase-internal
 
+# For manual setup, see README.md for required pre-install steps
 networks:
   dockebase-internal:
     name: dockebase-internal

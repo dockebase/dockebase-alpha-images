@@ -1,54 +1,83 @@
-# Dockebase Alpha Builds
+# Dockebase Alpha
 
-Docker images and installation script for Dockebase Alpha.
+Docker images and installation script for Dockebase — an open-source Docker control panel.
 
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-builds/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/install.sh | sudo bash
 ```
+
+The installer will detect your environment and guide you through configuration.
 
 ## Requirements
 
 - Ubuntu 22.04+ or Debian 12+ (recommended)
 - Docker Engine 24+ with Docker Compose v2
 - Root access (sudo)
-- Domain pointed to your server (optional, for SSL)
+- Domain pointed to your server (optional, for Let's Encrypt SSL)
 
 ## Manual Installation
 
-1. Create installation directory:
+If you prefer to install manually instead of using the install script:
+
+1. Create installation and data directories:
 ```bash
-sudo mkdir -p /opt/dockebase
+sudo mkdir -p /opt/dockebase/data/stacks
 cd /opt/dockebase
 ```
 
-2. Download files:
+2. Create Docker networks:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-builds/main/docker-compose.yml -o docker-compose.yml
-curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-builds/main/.env.example -o .env
+docker network create dockebase-internal
+docker network create dockebase-proxy
 ```
 
-3. Edit `.env` file:
+3. Download files:
 ```bash
+curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/.env.example -o .env
+```
+
+4. Generate secrets and edit `.env`:
+```bash
+# Generate AUTH_SECRET and DOCKEBASE_ENCRYPTION_KEY
+openssl rand -hex 32
+openssl rand -hex 32
+
 nano .env
 ```
 
-4. Start Dockebase:
+5. Pull images and start:
 ```bash
-sudo docker compose up -d
+docker compose pull
+docker compose up -d
 ```
+
+The backend will automatically create and start the reverse proxy container (Caddy or Traefik, based on your `PROXY_PROVIDER` setting).
 
 ## Configuration
 
 Edit `/opt/dockebase/.env`:
 
-| Variable | Description | Example |
+| Variable | Description | Default |
 |----------|-------------|---------|
-| `DOMAIN` | Your domain or localhost | `panel.example.com` |
-| `ACME_EMAIL` | Email for SSL certs | `admin@example.com` |
-| `BASE_URL` | Full URL with protocol | `https://panel.example.com` |
-| `AUTH_SECRET` | Random 64-char hex string | `openssl rand -hex 32` |
+| `DOMAIN` | Your domain or IP address | `localhost` |
+| `ACME_EMAIL` | Email for Let's Encrypt SSL (required for `https-acme` mode) | |
+| `BASE_URL` | Full URL with protocol | `http://localhost` |
+| `AUTH_SECRET` | Authentication secret — `openssl rand -hex 32` | |
+| `DOCKEBASE_ENCRYPTION_KEY` | Encryption key for sensitive data — `openssl rand -hex 32` | |
+| `DOCKEBASE_INSTANCE_SECRET` | Instance secret (leave empty — auto-generated on first startup) | |
+| `PROXY_PROVIDER` | Reverse proxy: `caddy` or `traefik` | `caddy` |
+| `PROXY_MODE` | `http`, `https-selfsigned`, or `https-acme` | `http` |
+
+### Proxy Modes
+
+| Mode | Use case |
+|------|----------|
+| `http` | Localhost development or behind Cloudflare Tunnel |
+| `https-selfsigned` | Server with public IP, no domain (browser will show security warning) |
+| `https-acme` | Server with domain — automatic Let's Encrypt certificates |
 
 ## Commands
 
@@ -68,40 +97,64 @@ docker compose down
 docker compose up -d
 
 # Update
-docker compose pull
-docker compose up -d
+docker compose pull && docker compose down && docker compose up -d
 ```
 
 ## Ports
 
-- **80** - HTTP (redirects to HTTPS when domain is set)
-- **443** - HTTPS
+Ports 80 and 443 are exposed by the reverse proxy container (Caddy or Traefik), which is created automatically by the backend on first startup.
 
 ## Data
 
-All data is stored in Docker volumes:
-- `dockebase-data` - SQLite database and stack files
-- `caddy-data` - SSL certificates
-- `caddy-config` - Caddy configuration
+All data is stored on the host via bind mounts:
+
+| Path | Contents |
+|------|----------|
+| `/opt/dockebase/data/dockebase.db` | SQLite database |
+| `/opt/dockebase/data/stacks/` | Stack files (compose files, repos) |
+| `/opt/dockebase/.env` | Configuration |
+
+The reverse proxy container manages its own SSL certificates internally.
 
 ## Backup
 
 ```bash
-# Backup data volume
-docker run --rm -v dockebase-data:/data -v $(pwd):/backup alpine tar czf /backup/dockebase-backup.tar.gz /data
+# Backup database and stack files
+sudo tar czf dockebase-backup.tar.gz -C /opt/dockebase data .env
+```
+
+## Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/delete.sh | sudo bash
 ```
 
 ## Troubleshooting
 
 ### SSL not working
 - Ensure your domain DNS points to the server
-- Check Caddy logs: `docker compose logs dockebase-web`
-- Port 80 and 443 must be open in firewall
+- Check proxy logs: `docker logs dockebase-caddy` (or `dockebase-traefik`)
+- Ports 80 and 443 must be open in firewall
+- Verify `PROXY_MODE=https-acme` and `ACME_EMAIL` is set in `.env`
 
 ### API unreachable
 - Check API logs: `docker compose logs dockebase-api`
-- Verify Docker socket permissions
+- Verify Docker socket is accessible: `ls -la /var/run/docker.sock`
+
+### Containers not starting
+- Check status: `docker compose ps`
+- Check logs: `docker compose logs`
+- Verify networks exist: `docker network ls | grep dockebase`
+
+## Architecture
+
+Dockebase runs as two containers defined in `docker-compose.yml`:
+
+- **dockebase-api** — Backend API server with Docker socket access
+- **dockebase-ui** — Frontend served by an internal Caddy instance
+
+The reverse proxy (Caddy or Traefik) is a separate container created and managed by the backend via the Docker API. It handles SSL termination and routes traffic to the UI and API containers.
 
 ## Support
 
-This is alpha software. Report issues at: https://github.com/dockebase/dockebase-alpha/issues
+This is alpha software. Report issues at: https://github.com/dockebase/dockebase-alpha-images/issues
