@@ -29,6 +29,8 @@ services:
       # Override default data paths to match host bind mount
       - STACKS_PATH=/opt/dockebase/data/stacks
       - DATABASE_PATH=/opt/dockebase/data/dockebase.db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - dockebase-internal
