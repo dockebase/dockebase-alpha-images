@@ -1,6 +1,6 @@
 # Dockebase Alpha
 
-Docker images and installation script for Dockebase — an open-source Docker control panel.
+Docker images and installation script for Dockebase — a source-available Docker control panel.
 
 ## Quick Install
 
@@ -66,7 +66,7 @@ Edit `/opt/dockebase/.env`:
 | `ACME_EMAIL` | Email for Let's Encrypt SSL (required for `https-acme` mode) | |
 | `BASE_URL` | Full URL with protocol | `http://localhost` |
 | `AUTH_SECRET` | Authentication secret — `openssl rand -hex 32` | |
-| `DOCKEBASE_ENCRYPTION_KEY` | Encryption key for sensitive data — `openssl rand -hex 32` | |
+| `DOCKEBASE_ENCRYPTION_KEY` | Encryption key for stack environment variables — `openssl rand -hex 32`. **Back this up separately — if you lose it, encrypted env vars cannot be recovered.** | |
 | `DOCKEBASE_INSTANCE_SECRET` | Instance secret (leave empty — auto-generated on first startup) | |
 | `PROXY_PROVIDER` | Reverse proxy: `caddy` or `traefik` | `caddy` |
 | `PROXY_MODE` | `http`, `https-selfsigned`, or `https-acme` | `http` |
@@ -102,7 +102,10 @@ docker compose pull && docker compose down && docker compose up -d
 
 ## Ports
 
-Ports 80 and 443 are exposed by the reverse proxy container (Caddy or Traefik), which is created automatically by the backend on first startup.
+The reverse proxy container publishes the ports Dockebase has registered: port 80 only in
+`PROXY_MODE=http`, ports 80 and 443 in `https-selfsigned` / `https-acme`. It is created automatically
+by the backend on first startup; extra public ports added in the UI are published on the next proxy
+restart.
 
 ## Data
 
@@ -122,6 +125,10 @@ The reverse proxy container manages its own SSL certificates internally.
 # Backup database and stack files
 sudo tar czf dockebase-backup.tar.gz -C /opt/dockebase data .env
 ```
+
+The archive includes `.env` (and `data/.encryption-key` if the key was auto-generated) — store it
+somewhere private. Without `DOCKEBASE_ENCRYPTION_KEY` the backup's stack environment variables cannot
+be decrypted.
 
 ## Uninstall
 
@@ -158,7 +165,7 @@ nothing to do with Dockebase.
 Dockebase runs as two containers defined in `docker-compose.yml`:
 
 - **dockebase-api** — Backend API server with Docker socket access
-- **dockebase-ui** — Frontend served by an internal Caddy instance
+- **dockebase-ui** — Frontend static build served by nginx (static files only; the external proxy routes `/api` and `/ws` straight to dockebase-api)
 
 The reverse proxy (Caddy or Traefik) is a separate container created and managed by the backend via the Docker API. It handles SSL termination and routes traffic to the UI and API containers.
 
