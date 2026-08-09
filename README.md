@@ -125,9 +125,16 @@ sudo tar czf dockebase-backup.tar.gz -C /opt/dockebase data .env
 
 ## Uninstall
 
+Removes Dockebase, the stacks it deployed, and `/opt/dockebase`. Other Docker
+containers, images, and volumes on the host are not touched:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/delete.sh | sudo bash
 ```
+
+⚠️ For a completely fresh start on a **dedicated** server, `delete.sh --nuke-all-docker`
+additionally wipes ALL Docker resources on the host — including ones that have
+nothing to do with Dockebase.
 
 ## Troubleshooting
 
