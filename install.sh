@@ -21,7 +21,27 @@ echo "│ Docker Control Panel - Alpha                                          
 echo "└─────────────────────────────────────────────────────────────────────────┘"
 echo -e "${NC}"
 
-INSTALL_DIR="/opt/dockebase"
+# Install location. Linux: /opt/dockebase. macOS: the Docker VMs (Docker
+# Desktop, Colima) only share /Users, /tmp and /private with the host by
+# default, so bind mounts under /opt fail with "mounts denied" — install into
+# the invoking user's home instead, which works with Docker Desktop, OrbStack
+# and Colima without any file-sharing configuration. The same path is used
+# inside and outside the container (see docker-compose.yml), so stack bind
+# mounts keep working.
+resolve_install_dir() {
+    if [ "$(uname -s)" = "Darwin" ]; then
+        local user_home
+        user_home=$(eval echo "~${SUDO_USER:-root}")
+        if [ -n "$SUDO_USER" ] && [ -d "$user_home" ]; then
+            echo "$user_home/.dockebase"
+        else
+            echo "/Users/Shared/dockebase"
+        fi
+    else
+        echo "/opt/dockebase"
+    fi
+}
+INSTALL_DIR="$(resolve_install_dir)"
 REPO_URL="https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main"
 
 # Check if running as root
@@ -290,6 +310,7 @@ DOCKEBASE_ENCRYPTION_KEY=$ENCRYPTION_KEY
 DOCKEBASE_INSTANCE_SECRET=
 PROXY_PROVIDER=$PROXY_PROVIDER
 PROXY_MODE=$PROXY_MODE
+DOCKEBASE_INSTALL_DIR=$INSTALL_DIR
 EOF
 
 echo -e "${GREEN}✓ Configuration created${NC}"
@@ -298,6 +319,12 @@ echo -e "${GREEN}✓ Configuration created${NC}"
 # This is required for stack bind mounts to work (Docker socket runs on host)
 echo -e "${BLUE}Creating data directory...${NC}"
 mkdir -p "$INSTALL_DIR/data/stacks"
+
+# macOS: the script runs under sudo but the install dir lives in the user's
+# home — hand ownership back so the panel files are manageable without root
+if [ "$(uname -s)" = "Darwin" ] && [ -n "$SUDO_USER" ]; then
+    chown -R "$SUDO_USER" "$INSTALL_DIR" 2>/dev/null || true
+fi
 echo -e "${GREEN}✓ Data directory created${NC}"
 
 # Create Docker networks

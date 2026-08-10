@@ -4,9 +4,12 @@ services:
     container_name: dockebase-api
     volumes:
       # Host bind mount with SAME PATH inside and outside container
-      # Required for stack bind mounts to work (Docker socket runs on host)
-      - /opt/dockebase/data:/opt/dockebase/data
-      - /opt/dockebase/.env:/opt/dockebase/.env
+      # Required for stack bind mounts to work (Docker socket runs on host).
+      # DOCKEBASE_INSTALL_DIR comes from the .env written by install.sh —
+      # /opt/dockebase on Linux, the user's home on macOS (the Docker Desktop /
+      # Colima VMs don't share /opt with the host by default).
+      - ${DOCKEBASE_INSTALL_DIR:-/opt/dockebase}/data:${DOCKEBASE_INSTALL_DIR:-/opt/dockebase}/data
+      - ${DOCKEBASE_INSTALL_DIR:-/opt/dockebase}/.env:${DOCKEBASE_INSTALL_DIR:-/opt/dockebase}/.env
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=production
@@ -27,8 +30,8 @@ services:
       # Disable Docker Compose Bake (buildx) for classic build
       - COMPOSE_BAKE=0
       # Override default data paths to match host bind mount
-      - STACKS_PATH=/opt/dockebase/data/stacks
-      - DATABASE_PATH=/opt/dockebase/data/dockebase.db
+      - STACKS_PATH=${DOCKEBASE_INSTALL_DIR:-/opt/dockebase}/data/stacks
+      - DATABASE_PATH=${DOCKEBASE_INSTALL_DIR:-/opt/dockebase}/data/dockebase.db
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

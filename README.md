@@ -21,6 +21,12 @@ The installer will detect your environment and guide you through configuration.
 
 If you prefer to install manually instead of using the install script:
 
+> **Install directory**: `/opt/dockebase` on Linux. On **macOS** use a directory in your
+> home instead (the install script picks `~/.dockebase`) — Docker Desktop / Colima VMs
+> do not share `/opt` with the host by default, so bind mounts there fail. Whatever you
+> choose, set it as `DOCKEBASE_INSTALL_DIR` in `.env` so docker-compose.yml mounts it.
+> The examples below use the Linux path.
+
 1. Create installation and data directories:
 ```bash
 sudo mkdir -p /opt/dockebase/data/stacks
@@ -109,7 +115,8 @@ restart.
 
 ## Data
 
-All data is stored on the host via bind mounts:
+All data is stored on the host via bind mounts (paths below show the Linux install dir
+`/opt/dockebase`; macOS installs live in `~/.dockebase`):
 
 | Path | Contents |
 |------|----------|
@@ -132,7 +139,8 @@ be decrypted.
 
 ## Uninstall
 
-Removes Dockebase, the stacks it deployed, and `/opt/dockebase`. Other Docker
+Removes Dockebase, the stacks it deployed, and the install directory
+(`/opt/dockebase` on Linux, `~/.dockebase` on macOS). Other Docker
 containers, images, and volumes on the host are not touched:
 
 ```bash

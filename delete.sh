@@ -7,7 +7,7 @@
 # - Dockebase containers (api, ui, caddy/traefik proxy)
 # - Containers, images, and volumes of stacks deployed BY Dockebase
 # - Dockebase networks (dockebase-internal, dockebase-proxy)
-# - All Dockebase data (/opt/dockebase: database, stacks, configs)
+# - All Dockebase data (install dir: database, stacks, configs)
 #
 # --nuke-all-docker additionally wipes EVERYTHING Docker on this host
 # (all containers, images, volumes, networks, build cache — including
@@ -22,7 +22,24 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-DOCKEBASE_DIR="/opt/dockebase"
+# Same install-dir resolution as install.sh (macOS installs live in the
+# invoking user's home because the Docker VMs don't share /opt by default)
+resolve_install_dir() {
+    if [ "$(uname -s)" = "Darwin" ]; then
+        local user_home
+        user_home=$(eval echo "~${SUDO_USER:-root}")
+        if [ -n "$SUDO_USER" ] && [ -d "$user_home/.dockebase" ]; then
+            echo "$user_home/.dockebase"
+        elif [ -d "/Users/Shared/dockebase" ]; then
+            echo "/Users/Shared/dockebase"
+        else
+            echo "${user_home}/.dockebase"
+        fi
+    else
+        echo "/opt/dockebase"
+    fi
+}
+DOCKEBASE_DIR="$(resolve_install_dir)"
 NUKE_ALL=false
 
 if [ "$1" = "--nuke-all-docker" ]; then
@@ -54,7 +71,7 @@ else
     echo "║  - Dockebase containers (api, ui, proxy)                      ║"
     echo "║  - Stacks deployed by Dockebase (containers + their volumes)  ║"
     echo "║  - Dockebase networks                                         ║"
-    echo "║  - All Dockebase data in /opt/dockebase                       ║"
+    echo "║  - All Dockebase data in the install directory                ║"
     echo "║                                                               ║"
     echo "║  Other Docker containers/images/volumes are NOT touched.      ║"
     echo "║  (Full host wipe: re-run with --nuke-all-docker)              ║"
@@ -150,9 +167,9 @@ else
     docker rm -f dockebase-api dockebase-ui 2>/dev/null || true
     echo -e "${GREEN}✓ Dockebase containers removed${NC}"
 
-    # [3/5] Proxy container (created by the API outside compose)
+    # [3/5] Proxy + cloudflared containers (created by the API outside compose)
     echo -e "${YELLOW}[3/5] Removing proxy container...${NC}"
-    docker rm -f dockebase-caddy dockebase-traefik 2>/dev/null || true
+    docker rm -f dockebase-caddy dockebase-traefik dockebase-cloudflared 2>/dev/null || true
     docker volume rm dockebase-caddy-data dockebase-caddy-config dockebase-traefik-data 2>/dev/null || true
     echo -e "${GREEN}✓ Proxy removed${NC}"
 
