@@ -139,13 +139,19 @@ be decrypted.
 
 ## Uninstall
 
-Removes Dockebase, the stacks it deployed, and the install directory
-(`/opt/dockebase` on Linux, `~/.dockebase` on macOS). Other Docker
+Removes Dockebase, the stacks it deployed, and the install directory.
+The directory is resolved from the running `dockebase-api` container
+(its `DATABASE_PATH`), falling back to probing the known locations
+(`/opt/dockebase`, `~/.dockebase`); the resolved path is shown before
+the deletion is confirmed, and an ambiguous result aborts. Other Docker
 containers, images, and volumes on the host are not touched:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/delete.sh | sudo bash
 ```
+
+A non-default install directory can be passed explicitly:
+`delete.sh [--nuke-all-docker] <install-dir>`.
 
 ⚠️ For a completely fresh start on a **dedicated** server, `delete.sh --nuke-all-docker`
 additionally wipes ALL Docker resources on the host — including ones that have

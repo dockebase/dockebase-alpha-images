@@ -22,29 +22,54 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-# Same install-dir resolution as install.sh (macOS installs live in the
-# invoking user's home because the Docker VMs don't share /opt by default)
-resolve_install_dir() {
-    if [ "$(uname -s)" = "Darwin" ]; then
-        local user_home
-        user_home=$(eval echo "~${SUDO_USER:-root}")
-        if [ -n "$SUDO_USER" ] && [ -d "$user_home/.dockebase" ]; then
-            echo "$user_home/.dockebase"
-        elif [ -d "/Users/Shared/dockebase" ]; then
-            echo "/Users/Shared/dockebase"
-        else
-            echo "${user_home}/.dockebase"
-        fi
+NUKE_ALL=false
+INSTALL_DIR_ARG=""
+for arg in "$@"; do
+    if [ "$arg" = "--nuke-all-docker" ]; then
+        NUKE_ALL=true
     else
-        echo "/opt/dockebase"
+        INSTALL_DIR_ARG="$arg"
+    fi
+done
+
+# Resolve the install dir AUTHORITATIVELY — this script deletes it, so it must
+# never guess. Order: explicit argument > DATABASE_PATH of the dockebase-api
+# container (ground truth of the running install) > probe of known locations
+# that actually contain a Dockebase install. Ambiguity aborts.
+resolve_install_dir() {
+    if [ -n "$INSTALL_DIR_ARG" ]; then
+        echo "$INSTALL_DIR_ARG"
+        return
+    fi
+
+    # <install>/data/dockebase.db → <install>
+    local db_path
+    db_path=$(docker inspect dockebase-api --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | sed -n 's/^DATABASE_PATH=//p')
+    if [ -n "$db_path" ]; then
+        dirname "$(dirname "$db_path")"
+        return
+    fi
+
+    local user_home c
+    local candidates=()
+    user_home=$(eval echo "~${SUDO_USER:-root}")
+    for c in /opt/dockebase "$user_home/.dockebase" /Users/Shared/dockebase; do
+        if [ -f "$c/docker-compose.yml" ] || [ -f "$c/.env" ]; then
+            candidates+=("$c")
+        fi
+    done
+    if [ "${#candidates[@]}" -eq 1 ]; then
+        echo "${candidates[0]}"
+    elif [ "${#candidates[@]}" -gt 1 ]; then
+        echo -e "${RED}Error: multiple Dockebase installations found:${NC}" >&2
+        printf '  %s\n' "${candidates[@]}" >&2
+        echo "Pass the one to remove explicitly: delete.sh [--nuke-all-docker] <install-dir>" >&2
+        exit 1
+    else
+        echo ""
     fi
 }
 DOCKEBASE_DIR="$(resolve_install_dir)"
-NUKE_ALL=false
-
-if [ "$1" = "--nuke-all-docker" ]; then
-    NUKE_ALL=true
-fi
 
 if [ "$NUKE_ALL" = true ]; then
     echo -e "${RED}"
@@ -80,6 +105,14 @@ else
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 fi
+
+# The user must see EXACTLY which tree is about to be deleted
+if [ -n "$DOCKEBASE_DIR" ]; then
+    echo -e "Install directory to remove: ${YELLOW}$DOCKEBASE_DIR${NC}"
+else
+    echo -e "${YELLOW}No Dockebase install directory found — only containers/networks will be removed.${NC}"
+fi
+echo ""
 
 echo -n "Are you sure you want to continue? Type 'DELETE' to confirm: "
 read confirm < /dev/tty
@@ -181,7 +214,7 @@ else
     echo -e "${YELLOW}[5/5] Removing Dockebase installation...${NC}"
 fi
 
-if [ -d "$DOCKEBASE_DIR" ]; then
+if [ -n "$DOCKEBASE_DIR" ] && [ -d "$DOCKEBASE_DIR" ]; then
     rm -rf "$DOCKEBASE_DIR"
     echo -e "${GREEN}✓ Removed $DOCKEBASE_DIR${NC}"
 else
