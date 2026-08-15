@@ -10,6 +10,93 @@ curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/ma
 
 The installer will detect your environment and guide you through configuration.
 
+## Unattended Install
+
+Passing any configuration flag (or its environment variable) switches the installer to
+unattended mode: no prompts ever run, and anything missing or invalid fails immediately
+with a machine-readable error. This is the mode for AI agents and scripts.
+
+```bash
+# Server with public IP, no domain (the public IP is auto-detected):
+curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/install.sh | sudo bash -s -- --mode https-selfsigned
+
+# Server with a domain (Let's Encrypt):
+curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/install.sh | sudo bash -s -- --mode https-acme --domain panel.example.com --email you@example.com
+
+# External TLS, e.g. Cloudflare Tunnel (HTTP inside, HTTPS terminated outside):
+curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/main/install.sh | sudo bash -s -- --mode http --domain xyz.trycloudflare.com
+```
+
+### Flags
+
+| Flag | Env variable | Description |
+|------|--------------|-------------|
+| `--mode <http\|https-selfsigned\|https-acme>` | `DOCKEBASE_MODE` | Required in unattended mode. `http` = plain HTTP (localhost, or TLS terminated externally); `https-selfsigned` = self-signed cert for IP access; `https-acme` = Let's Encrypt |
+| `--domain <host-or-ip>` | `DOCKEBASE_DOMAIN` | Required for `https-acme`. Optional for `https-selfsigned` (public IP auto-detected) and `http` (defaults to `localhost`) |
+| `--email <email>` | `DOCKEBASE_EMAIL` | ACME email — required for `https-acme` |
+| `--provider <caddy\|traefik>` | `DOCKEBASE_PROVIDER` | Reverse proxy (default `caddy`) |
+| `--base-url <url>` | `DOCKEBASE_BASE_URL` | Advanced: override the derived `BASE_URL` (scheme+host[:port] only) |
+| `-h`, `--help` | — | Print usage and exit 0 |
+
+Flags take precedence over environment variables. `BASE_URL` is derived automatically when
+`--base-url` is not given: `http` + `localhost` → `http://localhost`; `http` + any other
+domain → `https://<domain>` (TLS terminates externally, e.g. Cloudflare Tunnel);
+`https-selfsigned` / `https-acme` → `https://<domain>`.
+
+### Result line
+
+In unattended mode the **last stdout line** is a machine-readable result:
+
+```
+DOCKEBASE_RESULT: {"status":"success","fresh_install":true,"mode":"https-acme","provider":"caddy","url":"https://panel.example.com","install_dir":"/opt/dockebase","services":"running","proxy":"running","encryption_key_backup":"onboarding"}
+DOCKEBASE_RESULT: {"status":"error","error":"<code>","message":"<text>"}
+```
+
+Success fields:
+
+| Field | Meaning |
+|-------|---------|
+| `fresh_install` | boolean — `true` for a first install, `false` when an existing installation was repaired in place (config changes are refused, see below) |
+| `mode` | effective `PROXY_MODE` |
+| `provider` | `caddy` or `traefik` |
+| `url` | the panel's `BASE_URL` |
+| `install_dir` | installation directory |
+| `services` | `running` \| `not_running` (the two compose containers) |
+| `proxy` | `running` \| `pending` — `pending` means the backend had not created the proxy container within 45 s; this is not fatal |
+| `encryption_key_backup` | `onboarding` — the key is generated on first startup and the panel shows it **once** during onboarding (back it up there); `env_preserved` — an existing key in `.env` was preserved; `key_file` — the key lives in `data/.encryption-key` and its one-time onboarding disclosure already happened; `instance_secret` — legacy install, the recovery material is `DOCKEBASE_INSTANCE_SECRET` in `.env`. The key itself is never printed |
+
+Error codes: `usage`, `not_root`, `docker_missing`, `compose_missing`, `docker_not_running`,
+`public_ip_unknown`, `symlink_install_dir` (the install dir **or its `.env`** is a symlink),
+`download_failed`, `pull_failed`, `compose_up_failed`, `reconfigure_unsupported` and
+`recovery_required` (see "Re-running the installer" below), `services_not_running`, and
+`internal_error` — the blanket code for any unexpected failure (inspect stderr).
+
+Exit codes: `0` success, `1` runtime failure, `2` usage error (also returned when the
+installer is piped without flags and no terminal is available).
+
+### Re-running the installer
+
+The installer is idempotent (this applies to interactive runs too). When
+`<install-dir>/.env` already exists, existing non-empty `AUTH_SECRET` and
+`DOCKEBASE_ENCRYPTION_KEY` are **never regenerated**, `DOCKEBASE_INSTANCE_SECRET`
+is left untouched, and the configuration keys (`DOMAIN`, `ACME_EMAIL`, `BASE_URL`,
+`PROXY_PROVIDER`, `PROXY_MODE`, `DOCKEBASE_INSTALL_DIR`) are updated in place —
+all other lines and comments in `.env` are preserved.
+
+A re-run can only **repair** an installation, not reconfigure it: once the
+database exists (the instance has booted at least once), domain, proxy mode and
+provider live in the database, and an `.env`-only change would never take
+effect. A re-run with a different `--mode`/`--domain`/`--provider` therefore
+fails with `reconfigure_unsupported` — change these settings in the panel, or
+uninstall first with `delete.sh`. When `--provider` is not given, a re-run
+inherits the existing `.env` value instead of defaulting to caddy, so a repair
+cannot silently flip the proxy.
+
+Two states refuse with `recovery_required` instead of proceeding: an
+initialized database without `.env`, or without any encryption key (missing in
+`.env` and no `data/.encryption-key`). Continuing would orphan the encrypted
+data — restore from a backup, or start over with `delete.sh`.
+
 ## Requirements
 
 - Ubuntu 22.04+ or Debian 12+ (recommended)
@@ -47,8 +134,8 @@ curl -fsSL https://raw.githubusercontent.com/dockebase/dockebase-alpha-images/ma
 
 4. Generate secrets and edit `.env`:
 ```bash
-# Generate AUTH_SECRET and DOCKEBASE_ENCRYPTION_KEY
-openssl rand -hex 32
+# Generate AUTH_SECRET (leave DOCKEBASE_ENCRYPTION_KEY empty — it is
+# generated on first startup and shown once in the panel onboarding)
 openssl rand -hex 32
 
 nano .env
@@ -72,7 +159,7 @@ Edit `/opt/dockebase/.env`:
 | `ACME_EMAIL` | Email for Let's Encrypt SSL (required for `https-acme` mode) | |
 | `BASE_URL` | Full URL with protocol | `http://localhost` |
 | `AUTH_SECRET` | Authentication secret — `openssl rand -hex 32` | |
-| `DOCKEBASE_ENCRYPTION_KEY` | Encryption key for stack environment variables — `openssl rand -hex 32`. **Back this up separately — if you lose it, encrypted env vars cannot be recovered.** | |
+| `DOCKEBASE_ENCRYPTION_KEY` | Encryption key for stack environment variables. **Leave empty** — it is generated on first startup and the panel shows it **once** during onboarding for backup. Set it only when restoring a backed-up key. **If the key is lost, encrypted env vars cannot be recovered.** | |
 | `DOCKEBASE_INSTANCE_SECRET` | Instance secret (leave empty — auto-generated on first startup) | |
 | `PROXY_PROVIDER` | Reverse proxy: `caddy` or `traefik` | `caddy` |
 | `PROXY_MODE` | `http`, `https-selfsigned`, or `https-acme` | `http` |
